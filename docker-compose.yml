@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+
+  wordpress:
+    image: wordpress:latest
+    container_name: "wp${IMAGE_VERSION}"
+    volumes:
+      - ./wordpress:/var/www/html
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.wp${IMAGE_VERSION}.rule=Host(`${HOST}`)"
+      - "traefik.http.routers.wp${IMAGE_VERSION}.entrypoints=websecure"
+      - "traefik.http.routers.wp${IMAGE_VERSION}.service=wp${IMAGE_VERSION}"
+      - "traefik.http.services.wp${IMAGE_VERSION}.loadbalancer.server.port=80"
+    networks:
+      - web-wp
+      - internal-wp
+    expose:
+      - 80
+
+  db:
+    image: mysql:5.7
+    container_name: "db${IMAGE_VERSION}"
+    volumes:
+      - ./wp-db-data:/var/lib/mysql
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      MYSQL_ROOT_PASSWORD: somewordpress
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    restart: unless-stopped
+    networks:
+      - internal-wp
+
+networks:
+  web-wp:
+    name: web
+    external: true
+  internal-wp:
+    driver: bridge
